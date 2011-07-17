@@ -2,12 +2,13 @@
 require_once("conf.php");
 
 // Connect to MySQL using PDO
-function mysqliConnect()
+function DBConnect()
 {
 	$address = getconf("Address");
 	$user = getconf("Username");
 	$password = getconf("Password");
-	$dbName = getconf("Database");
+	//$dbName = getconf("Database");
+	$dbName = "";
 	
 	try
 	{
@@ -16,7 +17,7 @@ function mysqliConnect()
 	}
 	catch (PDOException $e)
 	{
-		echo "Connection failed: " . $e->getMessage();
+		die("ERROR in DBConnect()!: <br /> " . $e->getMessage());
 	}
 	
 	return $db;
