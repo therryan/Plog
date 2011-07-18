@@ -1,0 +1,13 @@
+== BUGS ==
+- When database is initialized (by init.php), it doesn't check whether they already exist
+
+== FEATURES ==
+
+	= UI =
+		- The following pages have no UI:
+			- add.php
+			- index.php
+			- show.php
+			- init.php
+	
+== IDEAS ==

@@ -10,6 +10,11 @@ public class Translation
 	private $title;
 	private $date;
 	private $body;			// The actual content of the translation
-	//private $tags;
+	//private $tags;		// For the future
+	
+	public function __construct()
+	{
+		
+	}
 }
 ?>
