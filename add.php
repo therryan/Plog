@@ -1,9 +1,12 @@
-<?php ?>
+<?php
+require("model/funcs.php");
+
+?>
 <!DOCTYPE html>
 <html>
 	<head>
 	</head>
 	
-	<body>
+	<body>	
 	</body>
 </html>

@@ -37,7 +37,7 @@ function initializeConfigurationFile()
 // Creates the necessary tables etc. in the database
 function initializeDatabase()
 {
-	// Doesn't specify the default db, since it hasn't yet been created
+	// 'TRUE' doesn't specify the default db, since it hasn't yet been created
 	$db = DBConnect(TRUE);
 	
 	try {
@@ -53,7 +53,7 @@ function initializeDatabase()
 		// Create the master_posts table
 		// Note: The actual columns that reference translations will be created
 		//		at the same time as a new language is added
-		$db->exec("CREATE TABLE IF NOT EXISTS master_posts(".
+		$db->exec("CREATE TABLE IF NOT EXISTS master_posts (".
 		                        "id INT NOT NULL PRIMARY KEY AUTO_INCREMENT,".
 		                        "time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP".
 		                        ") ENGINE=InnoDB");
@@ -63,17 +63,20 @@ function initializeDatabase()
 		// short_name is a (preferably) two-letter abbreviation: "en"
 		//		It is used when creating the table for the language: "en_posts"
 		// default_lang is the language that is chosen 
-		$db->exec("CREATE TABLE IF NOT EXISTS langs(".
-		                        "id INT NOT NULL PRIMARY KEY AUTO_INCREMENT,".
-		                        "full_name TEXT NOT NULL,".
-		                        "short_name CHAR(2) NOT NULL UNIQUE,".
-		                        "default_lang BOOL NOT NULL DEFAULT FALSE".
-		                        ") ENGINE=InnoDB");
+		$db->exec("CREATE TABLE IF NOT EXISTS langs (".
+		    "id INT NOT NULL PRIMARY KEY AUTO_INCREMENT,".
+		    "full_name TEXT NOT NULL,".
+		    "short_name CHAR(3) NOT NULL UNIQUE,".
+		    "table_name CHAR(10) NOT NULL UNIQUE,".
+		    "default_lang BOOL NOT NULL DEFAULT FALSE".
+		    ") ENGINE=InnoDB");
 
 		echo "Database and default tables successfully created!";
 	} catch (PDOException $e) {
 		die("ERROR: " . $e->getMessage());
 	}
+	
+	$db = NULL;
 }
 
 // Merely calls both inits, i.e. when the program is first run
@@ -81,6 +84,71 @@ function fullInitialization()
 {
 	initializeConfigurationFile();
 	initializeDatabase();
+}
+
+// Does the necessary database alterations and additions when adding a language:
+//		- The language's own table, with the actual content etc.
+//		- A row to the langs table, detailing the language
+//		- A column to master_posts, with references to the language's table
+function addLanguage($name)
+{
+	// The short name of a language is its two-letter abbreviation (English -> en)
+	$shortName = substr(strtolower($name), 0, 2);
+	
+	// The table name is what will be used for creating the new table,
+	//		as well as for the column in master_posts
+	// Note: we don't need to prepare queries that only include $tableName, 
+	//		because it is so short that it doesn't allow SQL injections
+	$tableName = $shortName . "_posts";
+	$db = DBConnect();
+	
+	// The database queries are separated into two try-catch blocks, because
+	//		the first one cannot be put into a transaction
+	try {
+		// 1. The creation of the new table
+		$db->exec("CREATE TABLE IF NOT EXISTS $tableName (".
+		    "id INT NOT NULL PRIMARY KEY AUTO_INCREMENT,".
+		    "master_id INT NOT NULL UNIQUE,".
+		    "lang_id INT NOT NULL,".
+            "time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,".
+            "title TINYTEXT NOT NULL,".
+            "content LONGTEXT NULL".
+            ") ENGINE=InnoDB");
+	} catch (PDOException $e) {
+		// We don't have to drop the table in case an error is thrown, because
+		//		that would automatically abort the operation
+		die("ERROR in addLanguage(), table creation: <br />" . $e->getMessage());
+	}
+	
+	try {
+		$defaultLanguage = FALSE;
+		
+		// If this is the first language, we'll make it the default one
+		if ($db->exec("SELECT * FROM langs") == 0) {
+			$defaultLanguage = TRUE;
+		}
+		
+		// 2. Adding a row to the langs table
+		$addRowToLangs = $db->prepare("INSERT INTO plog.langs".
+		    "(full_name, short_name, table_name, default_lang) VALUES ".
+		    "(:name, :shortName, :tableName, :defaultLanguage)");
+		$addRowToLangs->bindValue(":name", $name);
+		$addRowToLangs->bindValue(":shortName", $shortName);
+		$addRowToLangs->bindValue(":tableName", $tableName);
+		$addRowToLangs->bindValue(":defaultLanguage", $defaultLanguage);
+		$addRowToLangs->execute();
+		
+		// 3. Adding a column to master_posts
+		$db->exec("ALTER TABLE master_posts ".
+		          "ADD $tableName INT NOT NULL");
+	} catch(PDOException $e) {
+		// In case of error, let's roll back the changes
+		$db->exec("DROP TABLE $tableName");
+		die("ERROR in addLanguage(), in transaction: <br /> " . $e->getMessage());
+	}
+	
+	echo "Successfully added a new language";
+	$db = NULL;
 }
 
 ?>

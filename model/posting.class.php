@@ -1,7 +1,7 @@
 <?php
 require("funcs.php");
 
-public class Posting
+class Posting
 {
 	/* --- Fields ---------------------------- */
 	private $master_id;
@@ -13,9 +13,18 @@ public class Posting
 	{
 		$master_id = $id;
 		
-		$db = DBConnect();
-		$stmt = $db->prepare("SELECT ")
+		try {
+			$db = DBConnect();
+			$stmt = $db->prepare("SELECT time FROM master_posts WHERE id = ?");
+			$stmt->bindValue(1, $id);
+			$stmt->execute();
+			$result = $stmt->fetchObject();
 		
+			$this->timestamp = $result->time;
+		} catch (PDOException $e) {
+			die($e->getMessage);
+		}
+		$db = NULL;
 	}
 }
 ?>

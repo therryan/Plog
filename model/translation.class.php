@@ -1,6 +1,6 @@
 <?php
 
-public class Translation
+class Translation
 {
 	/* --- Fields ---------------------------- */
 	private $id;			// Translation's personal ID within 
