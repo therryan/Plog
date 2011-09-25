@@ -1,5 +1,10 @@
 == BUGS ==
 - When database is initialized (by init.php), it doesn't check whether they already exist
+- When a language is created, the abbreviation is always the first two letters, when
+		in fact the user should have to able to specify it themselves
+- Languages beginning with the same first two letters cannot be added (short_name is UNIQUE)
+- If the same language is added a second time, the program crashes because it tries to create a table already in existence
+- If there's an error in deleteLanguage and a language is only partly deleted, both addLanguage and deleteLanguage stop working, because they try to create things that already exist or remove things that have already been deleted
 
 == FEATURES ==
 
@@ -11,3 +16,11 @@
 			- init.php
 	
 == IDEAS ==
+- Logging system
+- Appropriate title length (currently *very* long)
+- Tags
+- Dreams?
+
+=== FOR 0.1 ===
+- Finish Posting and Translation
+- Add rudimentary UI for adding and displaying a post and its translations

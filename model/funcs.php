@@ -87,9 +87,10 @@ function fullInitialization()
 }
 
 // Does the necessary database alterations and additions when adding a language:
-//		- The language's own table, with the actual content etc.
-//		- A row to the langs table, detailing the language
-//		- A column to master_posts, with references to the language's table
+//		- The language's own table to contain the actual content
+//		- A row to the 'langs' table, detailing the language
+//		- A column to 'master_posts', with references to the language's table
+// Returns TRUE upon success
 function addLanguage($name)
 {
 	// The short name of a language is its two-letter abbreviation (English -> en)
@@ -102,8 +103,6 @@ function addLanguage($name)
 	$tableName = $shortName . "_posts";
 	$db = DBConnect();
 	
-	// The database queries are separated into two try-catch blocks, because
-	//		the first one cannot be put into a transaction
 	try {
 		// 1. The creation of the new table
 		$db->exec("CREATE TABLE IF NOT EXISTS $tableName (".
@@ -128,7 +127,11 @@ function addLanguage($name)
 			$defaultLanguage = TRUE;
 		}
 		
-		// 2. Adding a row to the langs table
+		// The connection has to be reset, because otherwise the next execute()
+		//		would throw an error about unbuffered queries
+		$db = NULL; $db = DBConnect();
+		
+		// 2. Adding a row to 'langs'
 		$addRowToLangs = $db->prepare("INSERT INTO plog.langs".
 		    "(full_name, short_name, table_name, default_lang) VALUES ".
 		    "(:name, :shortName, :tableName, :defaultLanguage)");
@@ -143,12 +146,38 @@ function addLanguage($name)
 		          "ADD $tableName INT NOT NULL");
 	} catch(PDOException $e) {
 		// In case of error, let's roll back the changes
-		$db->exec("DROP TABLE $tableName");
 		die("ERROR in addLanguage(), in transaction: <br /> " . $e->getMessage());
 	}
-	
-	echo "Successfully added a new language";
+
 	$db = NULL;
+	return TRUE;
+}
+
+// This function just reverses the changes made by the 'addLanguage' function:
+//		- Drops the language's own table that contains the actual content
+//		- Deletes the row in the 'langs' table
+//		- Drops the column in 'master_posts'
+// Returns TRUE upon success
+function deleteLanguage($name)
+{
+	$shortName = substr(strtolower($name), 0, 2);
+	$tableName = $shortName . "_posts";
+	$db = DBConnect();
+	
+	try {
+	// 1. Dropping the language's table
+	$db->exec("DROP TABLE $tableName");
+	
+	// 2. Deleting the row in 'langs'
+	$db->exec("DELETE FROM langs WHERE table_name = '$tableName'");
+	
+	// 3. Drops the column from 'master_posts'
+	$db->exec("ALTER TABLE master_posts DROP $tableName");
+	} catch(PDOException $e) {
+		die("ERROR in deleteLanguage: <br />" . $e->getMessage());
+	}
+	$db = NULL;
+	return TRUE;
 }
 
 ?>
